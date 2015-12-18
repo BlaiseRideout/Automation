@@ -1,9 +1,9 @@
 #include "server.hpp"
 
 #include <boost/bind.hpp>
+#include <json/json.h>
 
 #include <iostream>
-#include <regex>
 #include <sstream>
 
 client::pointer client::create(boost::asio::io_service &io, server &serv) {
@@ -41,17 +41,23 @@ std::function<void(const boost::system::error_code&, size_t)> client::wrap_read(
 }
 
 void client::handle_registration(std::string message) {
-	std::regex registration_pattern("^Hi. I'm a ([^ ]*)$");
-	std::smatch match;
-	auto matches = std::regex_match(message, match, registration_pattern);
-
-	if(matches && match.size() == 2) {
-		this->type = match[1];
-		std::cout << "A " << this->type << " connected." << std::endl;
-		serv.add_client(this->type, shared_from_this());
-	}
-	else
+	Json::Value root;
+	Json::Reader reader;
+	if(!reader.parse(message, root)) {
+		std::cerr << "Failed to parse registration json:" << reader.getFormattedErrorMessages() << std::endl;
 		shutdown();
+		return;
+	}
+
+	this->type = root.get("type", "").asString();
+	if(this->type == "") {
+		std::cerr << "Failed to get device type. Disconnecting";
+		shutdown();
+		return;
+	}
+	std::cout << "A " << this->type << " connected." << std::endl;
+
+	serv.add_client(this->type, shared_from_this());
 
 	listen();
 }
@@ -61,7 +67,17 @@ void client::listen() {
 }
 
 void client::handle_read(std::string message) {
-	serv.send_message(this->type, shared_from_this(), message);
+	Json::Value root;
+	Json::Reader reader;
+	if(!reader.parse(message, root)) {
+		std::cerr << "Failed to parse message from " << this->type << ":" << std::endl << reader.getFormattedErrorMessages();
+		return;
+	}
+
+	if(!root.isMember("type"))
+		root["type"] = this->type;
+
+	serv.send_message(root.get("to", this->type).asString(), shared_from_this(), Json::FastWriter().write(root));
 }
 
 void client::handle_write(const boost::system::error_code &err, size_t bytes_transferred) {

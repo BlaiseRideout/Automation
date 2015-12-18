@@ -9,7 +9,7 @@
 void start_client(const boost::program_options::variables_map &options) {
 	using boost::asio::ip::tcp;
 
-	auto address = options["address"].as<std::string>();
+	auto address = options["ip"].as<std::string>();
 	auto port = options["port"].as<std::string>();
 
 	boost::asio::io_service io;
@@ -21,8 +21,8 @@ void start_client(const boost::program_options::variables_map &options) {
 	boost::asio::connect(socket, resolver.resolve(query));
 	std::cout << "Connected." << std::endl;
 	fflush(stdout);
-	socket.write_some(boost::asio::buffer(std::string("Hi, I'm a test\n")));
-	socket.write_some(boost::asio::buffer(std::string("Hello\n")));
+	socket.write_some(boost::asio::buffer(std::string("{\"type\":\"test\"}\n")));
+	socket.write_some(boost::asio::buffer(std::string("{\"to\":\"test\",\"message\":\"on\"}\n")));
 
 	for(;;) {
 		boost::array<char, 128> buf;
@@ -48,14 +48,14 @@ int main(int argc, char **argv) {
 	desc.add_options()
 		("help,h", "Show this message")
 		("port,p", po::value<std::string>()->required(), "Socket port")
-		("address", po::value<std::string>()->required(), "Socket address to bind");
+		("ip", po::value<std::string>()->required(), "Socket address to bind");
 
 	po::variables_map options;
 	po::store(po::command_line_parser(argc, argv).options(desc).positional(positional).run(), options);
 
 	po::notify(options);
 
-	if(options.count("help") || !(options.count("address") && options.count("port"))) {
+	if(options.count("help") || !(options.count("ip") && options.count("port"))) {
 		std::cout << desc << std::endl;
 		return 0;
 	}
