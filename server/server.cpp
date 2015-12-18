@@ -19,9 +19,38 @@ void server::start_accept() {
 }
 
 void server::handle_accept(client::pointer new_client, const boost::system::error_code &err) {
-	if(!err)
+	if(!err) {
 		new_client->start();
+		this->active_clients.emplace(new_client);
+	}
 	this->start_accept();
+}
+
+void server::add_client(std::string type, client::pointer c) {
+	if(this->active_clients.insert(c).second)
+		std::cout << "Double added" << std::endl;
+	this->clients[type].insert(c);
+}
+
+void server::remove_client(client::pointer c) {
+	if(!this->active_clients.erase(c))
+		std::cout << "Couldn't remove client" << std::endl;
+	if(this->clients[c->type].erase(c))
+		std::cout << "Deregistered client" << std::endl;
+}
+
+void server::send_message(std::string type, client::pointer c, std::string message) {
+	auto of_type = this->clients[type];
+	for(auto i = of_type.begin(); i != of_type.end(); ++i)
+		if(*i != c) {
+			try {
+				(*i)->write(message);
+			}
+			catch(boost::system::system_error e){
+				std::cerr << e.what() << std::endl;
+				(*(i--))->shutdown();
+			}
+		}
 }
 
 

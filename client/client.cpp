@@ -19,20 +19,21 @@ void start_client(const boost::program_options::variables_map &options) {
 	tcp::socket socket(io);
 
 	boost::asio::connect(socket, resolver.resolve(query));
-	std::cout << "Connected. Awaiting data" << std::endl;
+	std::cout << "Connected." << std::endl;
 	fflush(stdout);
+	socket.write_some(boost::asio::buffer(std::string("Hi, I'm a test\n")));
+	socket.write_some(boost::asio::buffer(std::string("Hello\n")));
 
 	for(;;) {
 		boost::array<char, 128> buf;
 		boost::system::error_code err;
 
 		size_t len = socket.read_some(boost::asio::buffer(buf), err);
-		if(err == boost::asio::error::eof)
+		if(err)
 			break;
-		else if(err)
-			std::cerr << err << std::endl;
 
 		std::cout.write(buf.data(), len);
+		std::cout << std::endl;
 	}
 
 }

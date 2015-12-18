@@ -2,32 +2,37 @@
 
 #include <boost/bind.hpp>
 
+#include <iostream>
 #include <regex>
+#include <sstream>
 
 client::pointer client::create(boost::asio::io_service &io, server &serv) {
 	return pointer(new client(io, serv));
 }
 
+client::client(boost::asio::io_service &io, server &serv) : socket(io), serv(serv) {
+}
+
 void client::start() {
-	boost::asio::async_read(this->socket, boost::asio::buffer(this->buf, this->buf.size()), wrap_read(&client::handle_registration));
+	boost::asio::async_read_until(this->socket, this->buf, "\n", wrap_read(&client::handle_registration));
 }
 
 void client::write(std::string message) {
+	std::cout << "write: " << message << std::endl;
 	boost::asio::async_write(this->socket, boost::asio::buffer(message), boost::bind(&client::handle_write, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
-}
-
-client::client(boost::asio::io_service &io, server &serv) : socket(io), io(io), serv(serv) {
-	shared = shared_from_this();
 }
 
 void client::read_message(std::function<void(client*, std::string)> func, const boost::system::error_code &err, size_t size) {
 	if(err) {
+		std::cerr << err.message() << std::endl;
 		shutdown();
 		return;
 	}
 
 	std::string message;
-	std::copy(this->buf.begin(), this->buf.begin() + size, std::back_inserter(message));
+	std::istream ss(&this->buf);
+	std::getline(ss, message);
+
 	func(this, message);
 }
 
@@ -42,8 +47,8 @@ void client::handle_registration(std::string message) {
 
 	if(matches && match.size() == 2) {
 		this->type = match[1];
-		auto clients = serv.clients[type];
-		clients.insert(shared);
+		std::cout << "A " << this->type << " connected." << std::endl;
+		serv.add_client(this->type, shared_from_this());
 	}
 	else
 		shutdown();
@@ -52,23 +57,27 @@ void client::handle_registration(std::string message) {
 }
 
 void client::listen() {
-	boost::asio::async_read(this->socket, boost::asio::buffer(this->buf, this->buf.size()), wrap_read(&client::handle_read));
+	boost::asio::async_read_until(this->socket, this->buf, "\n", wrap_read(&client::handle_read));
 }
 
 void client::handle_read(std::string message) {
-	auto clients = serv.clients[type];
-	for(auto i = clients.begin(); i != clients.end(); ++i) {
-		(*i)->write(message);
-	}
+	serv.send_message(this->type, shared_from_this(), message);
 }
 
 void client::handle_write(const boost::system::error_code &err, size_t bytes_transferred) {
-	if(err)
+	if(err) {
+		std::cerr << err.message() << std::endl;
 		this->shutdown();
+		return;
+	}
 }
 
 void client::shutdown() {
-	this->socket.shutdown(tcp::socket::shutdown_both);
-	this->socket.close();
-	serv.clients[this->type].erase(shared);
+	try {
+		this->socket.shutdown(tcp::socket::shutdown_both);
+		this->socket.close();
+	}
+	catch(boost::system::system_error) {
+	}
+	serv.remove_client(shared_from_this());
 }
