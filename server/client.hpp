@@ -24,12 +24,12 @@ class client : public boost::enable_shared_from_this<client> {
 	private:
 		client(boost::asio::io_service &io, server &serv);
 		void read_message(std::function<void(client*, std::string)>, const boost::system::error_code&, size_t);
-		std::function<void(const boost::system::error_code&, size_t)> wrap_function(std::function<void(client*, std::string)> func);
+		std::function<void(const boost::system::error_code&, size_t)> wrap_read(std::function<void(client*, std::string)> func);
 		void handle_registration(std::string);
 		void listen();
 		void handle_read(std::string);
 
-		void handle_write(const boost::system::error_code&);
+		void handle_write(const boost::system::error_code&, size_t);
 		void shutdown();
 
 		server &serv;
@@ -37,4 +37,5 @@ class client : public boost::enable_shared_from_this<client> {
 		std::deque<std::string> messages;
 		boost::asio::io_service &io;
 		boost::array<char, 256> buf;
+		pointer shared;
 };
