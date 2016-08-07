@@ -34,9 +34,9 @@ void server::add_client(std::string type, client::pointer c) {
 
 void server::remove_client(client::pointer c) {
 	if(!this->active_clients.erase(c))
-		std::cout << "Couldn't remove client" << std::endl;
+		std::cout << "Couldn't remove " << c->type << " client" << std::endl;
 	if(this->clients[c->type].erase(c))
-		std::cout << "Deregistered client" << std::endl;
+		std::cout << "Deregistered " << c->type << " client" << std::endl;
 }
 
 void server::send_message(std::string type, client::pointer c, std::string message) {

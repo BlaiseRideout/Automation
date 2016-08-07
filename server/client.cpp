@@ -55,7 +55,7 @@ void client::handle_registration(std::string message) {
 		shutdown();
 		return;
 	}
-	std::cout << "A " << this->type << " connected." << std::endl;
+	std::cout << "A(n) " << this->type << " connected." << std::endl;
 
 	serv.add_client(this->type, shared_from_this());
 
@@ -78,6 +78,7 @@ void client::handle_read(std::string message) {
 		root["type"] = this->type;
 
 	serv.send_message(root.get("to", this->type).asString(), shared_from_this(), Json::FastWriter().write(root));
+	this->listen();
 }
 
 void client::handle_write(const boost::system::error_code &err, size_t bytes_transferred) {
