@@ -9,8 +9,8 @@
 void start_client(const boost::program_options::variables_map &options) {
 	using boost::asio::ip::tcp;
 
-	auto address = options["ip"].as<std::string>();
-	auto port = options["port"].as<std::string>();
+	std::string address = options["ip"].as<std::string>();
+	std::string port = options["port"].as<std::string>();
 
 	boost::asio::io_service io;
 
@@ -21,19 +21,22 @@ void start_client(const boost::program_options::variables_map &options) {
 	boost::asio::connect(socket, resolver.resolve(query));
 	std::cout << "Connected." << std::endl;
 	fflush(stdout);
-	socket.write_some(boost::asio::buffer(std::string("{\"type\":\"test\"}\n")));
-	socket.write_some(boost::asio::buffer(std::string("{\"to\":\"test\",\"message\":\"on\"}\n")));
+	socket.write_some(boost::asio::buffer(std::string("{\"type\":\"tv\"}\n")));
 
 	for(;;) {
-		boost::array<char, 128> buf;
-		boost::system::error_code err;
+		socket.write_some(boost::asio::buffer(std::string("{\"to\":\"tv\",\"message\":\"power\"}\n")));
 
-		size_t len = socket.read_some(boost::asio::buffer(buf), err);
-		if(err)
-			break;
+		if(socket.available()) {
+			boost::array<char, 128> buf;
+			boost::system::error_code err;
+			size_t len = socket.read_some(boost::asio::buffer(buf), err);
+			if(err)
+				break;
 
-		std::cout.write(buf.data(), len);
-		std::cout << std::endl;
+			std::cout.write(buf.data(), len);
+			std::cout << std::endl;
+		}
+		sleep(5);
 	}
 
 }
