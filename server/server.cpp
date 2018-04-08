@@ -1,4 +1,5 @@
 #include "server.hpp"
+#include "util.h"
 
 #include <iostream>
 
@@ -28,15 +29,15 @@ void server::handle_accept(client::pointer new_client, const boost::system::erro
 
 void server::add_client(std::string type, client::pointer c) {
 	if(this->active_clients.insert(c).second)
-		std::cout << "Double added" << std::endl;
+		std::cout << nowStr() << ": Double added" << std::endl;
 	this->clients[type].insert(c);
 }
 
 void server::remove_client(client::pointer c) {
 	if(!this->active_clients.erase(c))
-		std::cout << "Couldn't remove " << c->type << " client" << std::endl;
+		std::cout << nowStr() << ": Couldn't remove " << c->type << " client" << std::endl;
 	if(this->clients[c->type].erase(c))
-		std::cout << "Deregistered " << c->type << " client" << std::endl;
+		std::cout << nowStr() << ": Deregistered " << c->type << " client" << std::endl;
 }
 
 void server::send_message(std::string type, client::pointer c, std::string message) {
@@ -47,7 +48,7 @@ void server::send_message(std::string type, client::pointer c, std::string messa
 				(*i)->write(message);
 			}
 			catch(boost::system::system_error e){
-				std::cerr << e.what() << std::endl;
+				std::cerr << nowStr() << ": " << e.what() << std::endl;
 				(*(i--))->shutdown();
 			}
 		}
@@ -58,9 +59,13 @@ void start_server(const boost::program_options::variables_map &options) {
 	auto port = options["port"].as<int>();
 	auto ip = boost::asio::ip::address::from_string(options["ip"].as<std::string>());
 
+	std::cout << nowStr() << ": Server starting" << std::endl;
+
 	boost::asio::io_service io;
 	server serv(io, ip, port);
 	io.run();
+
+	std::cout << nowStr() << ": Server closing" << std::endl;
 }
 
 int main(int argc, char **argv) {

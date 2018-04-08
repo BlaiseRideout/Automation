@@ -1,4 +1,5 @@
 #include "server.hpp"
+#include "util.h"
 
 #include <boost/bind.hpp>
 #include <json/json.h>
@@ -18,7 +19,7 @@ void client::start() {
 }
 
 void client::write(std::string message) {
-	std::cout << "write: " << message << std::endl;
+	std::cout << nowStr() << ": write: " << message << std::endl;
 	boost::asio::async_write(this->socket, boost::asio::buffer(message), boost::bind(&client::handle_write, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
 }
 
@@ -44,18 +45,18 @@ void client::handle_registration(std::string message) {
 	Json::Value root;
 	Json::Reader reader;
 	if(!reader.parse(message, root)) {
-		std::cerr << "Failed to parse registration json:" << reader.getFormattedErrorMessages() << std::endl;
+		std::cerr << nowStr() << ": Failed to parse registration json:" << reader.getFormattedErrorMessages() << std::endl;
 		shutdown();
 		return;
 	}
 
 	this->type = root.get("type", "").asString();
 	if(this->type == "") {
-		std::cerr << "Failed to get device type. Disconnecting";
+		std::cerr << nowStr() << ": Failed to get device type. Disconnecting";
 		shutdown();
 		return;
 	}
-	std::cout << "A(n) " << this->type << " connected." << std::endl;
+	std::cout << nowStr() << ": A(n) " << this->type << " connected." << std::endl;
 
 	serv.add_client(this->type, shared_from_this());
 
@@ -70,7 +71,7 @@ void client::handle_read(std::string message) {
 	Json::Value root;
 	Json::Reader reader;
 	if(!reader.parse(message, root)) {
-		std::cerr << "Failed to parse message from " << this->type << ":" << std::endl << reader.getFormattedErrorMessages();
+		std::cerr << nowStr() << ": Failed to parse message from " << this->type << ":" << std::endl << reader.getFormattedErrorMessages();
 		return;
 	}
 
@@ -83,7 +84,7 @@ void client::handle_read(std::string message) {
 
 void client::handle_write(const boost::system::error_code &err, size_t bytes_transferred) {
 	if(err) {
-		std::cerr << err.message() << std::endl;
+		std::cerr << nowStr() << ": " << err.message() << std::endl;
 		this->shutdown();
 		return;
 	}
